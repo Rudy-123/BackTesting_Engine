@@ -454,18 +454,6 @@ results/
   └── summary.csv   → Ranked strategy comparison
 ```
 
----
-
-## 📌 Future Enhancements
-
-- Multi-asset support (ETH, SOL, BNB)
-- Walk-forward optimization
-- Monte Carlo simulation for strategy robustness
-- Live paper trading integration
-- Sharpe ratio and Sortino ratio metrics
-- Cloud-based distributed backtesting on AWS ECS
-
----
 
 ## 🤝 Contributing
 
