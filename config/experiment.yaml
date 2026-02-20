@@ -1,0 +1,22 @@
+experiment:
+  name: "ma_crossover_baseline_64"
+
+data:
+  path: data/Processed/final_dataset.parquet
+
+execution:
+  commission: 0.001
+  slippage: 0.0005
+
+portfolio:
+  capital: 100000
+
+strategies:
+  ma_crossover:
+    short_window: [5, 10, 15, 20, 25, 30, 35, 40] # 8
+    long_window: [50, 60, 70, 80, 90, 100, 110, 120] # 8
+    ema_period: 200
+
+parallel:
+  workers: 8
+  batch_size: 8

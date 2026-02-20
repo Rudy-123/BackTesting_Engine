@@ -1,0 +1,24 @@
+# Personal / Resume
+resume_points.txt
+
+# Credentials / Secrets
+credentials.txt
+.env
+
+# Notes / Extra folders
+Folder_Structure/
+aws_dockerruncommand.txt
+
+# Data & Results
+data/
+results/
+*.csv
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS / Editor
+.DS_Store
+.vscode/
