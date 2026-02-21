@@ -226,6 +226,66 @@ Update Equity → cash + unrealized PnL
 
 ---
 
+## 📁 Project Structure
+
+```
+BackTesting_Engine/
+├── Engine/
+│   ├── backtesting_engine.py
+│   ├── data_loader.py
+│   ├── datafeed.py
+│   ├── execution.py
+│   ├── portfolio.py
+│   └── metrics.py
+│
+├── Strategies/
+│   ├── basic_strategy.py
+│   └── ma_crossover.py
+│
+├── Runner/
+│   ├── config_loader.py
+│   ├── strategy_factory.py
+│   ├── job_builder.py
+│   ├── batch_runner.py
+│   ├── parallel_runner.py
+│   └── worker.py
+│
+├── reporting/
+│   ├── result_writer.py
+│   ├── plots.py
+│   └── analytics.py
+│
+├── Scripts/
+│   ├── build_final_dataset.py
+│   ├── bootstrap_merge.py
+│   ├── csv_to_parquet.py
+│   └── csv_to_partitioned_parquet.py
+│
+├── tools/
+│   └── generate_report.py
+│
+├── config/
+│   └── experiment.yaml
+│
+├── data/
+│   ├── raw/
+│   │   ├── bootstrap/
+│   │   └── symbol=BTCUSDT/
+│   └── Processed/
+│
+├── results/
+│   ├── runs/
+│   ├── plots/
+│   └── summary.csv
+│
+├── Dockerfile
+├── benchmark.py
+├── main.py
+└── requirements.txt
+```
+
+---
+
 ## 🐳 Docker Containerization
 
 The engine is fully containerized for reproducible, deterministic research.
