@@ -22,3 +22,6 @@ __pycache__/
 # OS / Editor
 .DS_Store
 .vscode/
+
+README.md
+strategy_deep_dive.md
