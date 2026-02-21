@@ -5,11 +5,11 @@
 
 ## 📖 Project Overview
 
-**BackTesting Engine** is a high-performance, config-driven quantitative backtesting framework designed to evaluate trading strategies at scale. It executes grid search across **64+ strategy parameter combinations** using batched multiprocessing, achieving throughput of **100K–300K candles/sec** with a shared-nothing architecture.
+**BackTesting Engine** is a high-performance, config-driven quantitative backtesting framework designed to evaluate trading strategies at scale. It executes grid search across **64+ strategy parameter combinations** using batched multiprocessing with a shared-nothing architecture.
+
+The system transitioned from a naive crossover approach to a **Regime-Aware Strategy**, transforming a -$39,000 baseline loss into a potential **+$17,800 profit** through advanced risk management, volatility filtering, and momentum validation.
 
 The system ingests live and historical **BTCUSDT 15-minute candle data** from the **Binance API** through a fully automated, event-driven AWS pipeline — using **Lambda**, **EventBridge**, and **S3** — and feeds it into a Dockerized backtesting engine for reproducible, deterministic experimentation.
-
-The framework models real-world trading conditions including **slippage**, **commission fees**, **stop-loss risk management**, and **regime-aware trend filtering** using a 200 EMA, making it suitable for serious quantitative research and strategy validation.
 
 ---
 
@@ -75,9 +75,36 @@ graph TD
 
 ---
 
+## 📊 Results & Performance
+
+The engine's primary objective was to optimize a standard Moving Average crossover into a robust, tradeable strategy.
+
+### The PnL Turnaround
+
+Original baseline strategies often yielded significant losses due to "choppy" markets. By implementing Regime Filtering and Dynamic Stop Losses, we achieved a major performance shift:
+
+| Metric | Naive Strategy (Baseline) | Optimized Regime-Aware |
+|--------|---------------------------|-------------------------|
+| Total PnL | -$39,120 | +$17,855 |
+| Win Rate | 21.0% | 28.3% |
+| Max Drawdown | -$41,881 | -$11,406 |
+| Stop Loss | Fixed 1.0% | Dynamic 2.5x ATR |
+
+### Top Performing Strategy (Summary)
+
+Data extracted from latest 64-run grid search (`results/summary.csv`)
+
+| Strategy ID | Short/Long | Total PnL | Max Drawdown | PnL/DD Ratio |
+|-------------|------------|-----------|--------------|--------------|
+| ma_25_110 | 25 / 110 | $17,855.17 | -$11,406 | 1.56 |
+| ma_25_120 | 25 / 120 | $13,130.36 | -$9,846 | 1.33 |
+| ma_20_110 | 20 / 110 | $12,012.50 | -$14,460 | 0.83 |
+
+---
+
 ## ☁️ Cloud Data Ingestion Pipeline
 
-The data pipeline is fully serverless, designed for **zero-maintenance continuous data collection**.
+The data pipeline is fully serverless, designed for zero-maintenance continuous data collection.
 
 ### Pipeline Flow
 
@@ -102,9 +129,9 @@ sequenceDiagram
 
 ## ⚙️ Engineering Breakdown
 
-### 1. Backtesting Engine Core (`Engine/`)
+### 1. Backtesting Engine Core (Engine/)
 
-The engine follows an **event-driven, candle-by-candle architecture** where each component is isolated and composable.
+The engine follows an event-driven, candle-by-candle architecture where each component is isolated and composable.
 
 ```mermaid
 graph LR
@@ -119,90 +146,89 @@ graph LR
     Portfolio -->|"equity"| Metrics["Metrics"]:::core
 ```
 
-**Key Modules:**
+#### Key Modules
 
 | Module | File | Responsibility |
 |--------|------|---------------|
-| DataLoader | `data_loader.py` | Format-agnostic loader (CSV ↔ Parquet) |
-| DataFeed | `datafeed.py` | Sequential candle iterator |
-| BacktestingEngine | `backtesting_engine.py` | Core event loop |
-| ExecutionEngine | `execution.py` | Slippage + commission simulation |
-| Portfolio | `portfolio.py` | Position management + stop-loss |
-| Metrics | `metrics.py` | PnL, win rate, drawdown |
+| DataLoader | data_loader.py | Format-agnostic loader (CSV ↔ Parquet) |
+| DataFeed | datafeed.py | Sequential candle iterator |
+| BacktestingEngine | backtesting_engine.py | Core event loop |
+| ExecutionEngine | execution.py | Slippage + commission simulation |
+| Portfolio | portfolio.py | Position management + stop-loss |
+| Metrics | metrics.py | PnL, win rate, drawdown |
 
 ---
 
-### 2. Strategy Layer (`Strategies/`)
+### 2. Strategy Layer (Strategies/)
 
-Strategies inherit from `BaseStrategy` and implement `on_candle()` returning `BUY`, `SELL`, or `HOLD`.
+The strategy validates every signal against the current market "regime" to filter out noise.
+
+#### The "Regime Sniper" Logic:
 
 ```python
-if short_ma > long_ma and price > EMA_200 and momentum_spread > 0.1/100:
+if cross_up and price > EMA_200 and high_volatility and bullish_momentum:
     return "BUY"
-
-if long_ma > short_ma and position == "LONG":
-    return "SELL"
 ```
 
-**Filters Applied:**
-- 200 EMA Trend Filter
-- Momentum Spread Filter (≥ 0.1%)
-- Long-Only Strategy
+#### Filters Applied:
+
+- EMA 200 Slope: Ensures entries only in long-term uptrends  
+- ATR Volatility Filter: Ensures market activity is sufficient  
+- RSI Momentum (50-75): Ensures strong buyer interest without being overbought  
+- Dynamic ATR Stop Loss: Entry Price - (2.5 * ATR)
 
 ---
 
-### 3. Parallel Execution Framework (`Runner/`)
+### 3. Parallel Execution Framework (Runner/)
 
 Shared-nothing multiprocessing design for large-scale strategy evaluation.
 
 | Metric | Value |
 |--------|--------|
 | Strategies per run | 64 |
-| Workers | 8 |
-| Candle throughput | 100K–300K/sec |
-| Architecture | No shared memory |
-| Runtime Reduction | ~65% vs serial |
+| Workers | 8 (Configurable) |
+| Architecture | No shared state / No locks |
+| Runtime Reduction | ~65% vs serial execution |
 
 ---
 
 ### 4. Risk Management
 
-```
-Signal → Execute with slippage + commission
-Check Stop Loss → Exit at 2% loss
-Update Equity → cash + unrealized PnL
-```
+Signal → Execute with slippage + commission  
+Check ATR Stop Loss → Exit if volatility-adjusted bound hit  
+Update Equity → cash + unrealized PnL  
 
-- Full capital deployment
-- 2% hard stop-loss
-- 0.05% slippage
-- 0.1% commission
-- No take-profit (trend following)
+- 100% Capital Allocation per trade  
+- Dynamic 2.5x ATR Stop-Loss  
+- 0.05% Slippage Impact  
+- 0.1% Commission Fees  
+- No take-profit (Pure trend-following)
 
 ---
 
-### 5. Reporting & Analytics (`reporting/`)
+### 5. Reporting & Analytics (reporting/)
 
 | Output | Format | Location |
 |--------|--------|----------|
-| Full result | JSON | `results/runs/` |
-| Summary | CSV | `results/summary.csv` |
-| Equity Plot | PNG | `results/plots/` |
-| Drawdown Plot | PNG | `results/plots/` |
+| Full result | JSON | results/runs/ |
+| Summary | CSV | results/summary.csv |
+| Equity Plot | PNG | results/plots/ |
+| Drawdown Plot | PNG | results/plots/ |
 
 ---
 
-### 6. Data Optimization (`Scripts/`)
+### 6. Data Optimization (Scripts/)
 
-- CSV → Snappy Parquet
-- ~65% storage reduction
-- ~60% faster loading
-- Year-partitioned datasets
-- Format-agnostic loader
+- CSV → Snappy Parquet: ~65% storage reduction  
+- Speed: ~60% faster data loading  
+- Selective Reads: Year-partitioned datasets  
+- Format-Agnostic: Supports CSV and Parquet  
 
 ---
 
 ## 🐳 Docker Containerization
+
+The engine is fully containerized for reproducible, deterministic research.
 
 ```dockerfile
 FROM python:3.11-slim
@@ -212,10 +238,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 CMD ["python", "main.py"]
 ```
 
-Run:
+### Volume Mounts
 
 ```bash
-docker build -t backtesting_engine .
 docker run --rm \
   -v %cd%\data:/app/data \
   -v %cd%\results:/app/results \
@@ -226,21 +251,20 @@ docker run --rm \
 
 ## 🛠️ Tech Stack
 
-### Core
-- Python 3.11
-- Pandas
-- NumPy
-- PyArrow
-- Matplotlib
-- PyYAML
+### Core Engine
 
-### Cloud
-- AWS Lambda
-- AWS EventBridge
-- AWS S3
-- Binance REST API
-- Docker
-- AWS CLI
+- Python 3.11  
+- Pandas / NumPy  
+- PyArrow  
+- Matplotlib  
+- PyYAML  
+
+### Infrastructure
+
+- AWS Lambda  
+- AWS S3  
+- Docker  
+- Binance API  
 
 ---
 
@@ -259,14 +283,10 @@ python main.py
 
 ## 📄 License
 
-MIT License
+This project is licensed under the MIT License.
 
 ---
 
 ## ⭐ Acknowledgements
 
-Built to explore:
-- Quantitative strategy evaluation  
-- Cloud-native data pipelines  
-- High-performance multiprocessing  
-- Reproducible research environments  
+Built to explore quantitative strategy evaluation, cloud-native data pipelines, and high-performance computation using Python and AWS infrastructure.
