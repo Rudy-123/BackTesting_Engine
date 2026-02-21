@@ -188,7 +188,7 @@ Shared-nothing multiprocessing design for large-scale strategy evaluation.
 | Strategies per run | 64 |
 | Workers | 8 (Configurable) |
 | Architecture | No shared state / No locks |
-| Runtime Reduction | ~65% vs serial execution |
+| Runtime Reduction | ~88% vs serial execution |
 
 ---
 
@@ -219,7 +219,7 @@ Update Equity → cash + unrealized PnL
 
 ### 6. Data Optimization (Scripts/)
 
-- CSV → Snappy Parquet: ~65% storage reduction  
+- CSV → Snappy Parquet: ~83% storage reduction  
 - Speed: ~60% faster data loading  
 - Selective Reads: Year-partitioned datasets  
 - Format-Agnostic: Supports CSV and Parquet  
